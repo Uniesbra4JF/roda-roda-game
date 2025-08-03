@@ -61,6 +61,13 @@
             border-top-color: #fff;
             animation: spinner-anim 1s ease-in-out infinite;
         }
+        #history-list::-webkit-scrollbar { width: 8px; }
+        #history-list::-webkit-scrollbar-track { background: #1e293b; }
+        #history-list::-webkit-scrollbar-thumb {
+            background-color: #475569;
+            border-radius: 10px;
+            border: 2px solid #1e293b;
+        }
     </style>
 </head>
 <body class="bg-slate-800 text-white flex flex-col items-center min-h-screen p-4">
@@ -100,22 +107,28 @@
             <main class="bg-slate-900/50 p-4 rounded-lg shadow-2xl flex-grow flex flex-col justify-center items-center mb-4 border border-slate-700">
                 <div id="panel" class="flex flex-wrap justify-center gap-1.5"></div>
                 <p id="category" class="mt-4 text-lg font-bold text-cyan-300 tracking-widest uppercase"></p>
+                <!-- NOVO CONTAINER PARA A DICA FIXA -->
+                <div id="hint-display" class="mt-3 p-2 bg-purple-900/50 rounded-lg text-center text-sm text-purple-200 hidden"></div>
             </main>
             <footer class="flex flex-col items-center gap-3">
                 <div id="message-box" class="text-center text-xl font-bold h-12 mb-2 text-yellow-300"></div>
                 <button id="action-button" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg w-full text-xl uppercase transition-transform transform hover:scale-105"></button>
-                <button id="hint-button" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg w-full text-lg uppercase transition-transform transform hover:scale-105 hidden">✨ Pedir Dica (R$300)</button>
+                <button id="hint-button" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg w-full text-lg uppercase transition-transform transform hover:scale-105 hidden"></button>
             </footer>
         </div>
     </div>
 
     <!-- TELA DE HISTÓRICO -->
-    <div id="history-screen" class="w-full max-w-2xl mx-auto hidden">
-        <h1 class="text-3xl font-black tracking-wider uppercase text-center mb-6">Histórico de Vencedores</h1>
-        <div id="history-list" class="space-y-4">
-            <!-- Histórico será preenchido pelo JS -->
-        </div>
-        <button id="back-to-game-button" class="mt-8 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg w-full text-lg uppercase">Voltar ao Jogo</button>
+    <div id="history-screen" class="w-full max-w-2xl mx-auto hidden flex-col h-full">
+        <header class="text-center py-6">
+            <h1 class="text-3xl font-black tracking-wider uppercase text-cyan-300">Histórico de Vencedores</h1>
+        </header>
+        <main class="flex-grow bg-slate-900/50 p-4 rounded-lg border border-slate-700 overflow-hidden">
+            <div id="history-list" class="space-y-4 h-full overflow-y-auto"></div>
+        </main>
+        <footer class="mt-6">
+            <button id="back-to-game-button" class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg w-full text-lg uppercase">Voltar ao Jogo</button>
+        </footer>
     </div>
 
     <!-- MODAIS -->
@@ -129,7 +142,7 @@
     <div id="keyboard-modal" class="fixed bottom-0 left-0 right-0 bg-slate-800/95 p-4 rounded-t-2xl shadow-2xl hidden z-40 backdrop-blur-sm">
         <div id="keyboard" class="grid grid-cols-7 sm:grid-cols-10 gap-1.5 text-center"></div>
         <div class="flex gap-2 mt-4">
-            <button id="buy-vowel-button" class="flex-1 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 rounded-lg transition-opacity">Comprar Vogal (R$250)</button>
+            <button id="buy-vowel-button" class="flex-1 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 rounded-lg transition-opacity"></button>
             <button id="close-keyboard-button" class="flex-1 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold py-3 px-5 rounded-lg">Fechar</button>
         </div>
     </div>
@@ -144,18 +157,35 @@
         <div class="spinner"></div>
         <p id="loading-text" class="text-xl mt-4">Gerando seu jogo...</p>
     </div>
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center hidden z-50 p-4">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-sm text-white border border-slate-600">
+            <h3 id="alert-title" class="text-xl font-bold mb-2 text-center text-yellow-300">Aviso</h3>
+            <p id="alert-message" class="text-center mb-4"></p>
+            <button id="alert-ok-button" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-2 px-4 rounded">OK</button>
+        </div>
+    </div>
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center hidden z-50 p-4">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-sm text-white border border-slate-600">
+            <h3 id="confirm-title" class="text-xl font-bold mb-4 text-center">Confirmação</h3>
+            <p id="confirm-message" class="text-center mb-4"></p>
+            <div class="flex justify-end gap-4">
+                 <button id="confirm-cancel-button" class="bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded">Cancelar</button>
+                 <button id="confirm-ok-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Confirmar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // --- CONFIGURAÇÕES DO JOGO ---
         const gameConfig = {
             players: 3,
-            vowelCost: 250,
-            hintCost: 300,
+            vowelCost: 250.0,
+            hintCost: 300.0,
             phrases: [],
             wheelSegments: [
-                { value: 500, label: 'R$500', color: 'bg-teal-500' }, { value: 600, label: 'R$600', color: 'bg-cyan-500' },
-                { value: 700, label: 'R$700', color: 'bg-sky-500' }, { value: 800, label: 'R$800', color: 'bg-indigo-500' },
-                { value: 900, label: 'R$900', color: 'bg-purple-500' }, { value: 1000, label: 'R$1000', color: 'bg-pink-500' },
+                { value: 500.0, label: 'R$ 500,0', color: 'bg-teal-500' }, { value: 600.0, label: 'R$ 600,0', color: 'bg-cyan-500' },
+                { value: 700.0, label: 'R$ 700,0', color: 'bg-sky-500' }, { value: 800.0, label: 'R$ 800,0', color: 'bg-indigo-500' },
+                { value: 900.0, label: 'R$ 900,0', color: 'bg-purple-500' }, { value: 1000.0, label: 'R$ 1000,0', color: 'bg-pink-500' },
                 { value: 'PASS', label: 'PASSA A VEZ', color: 'bg-slate-500' }, { value: 'BANKRUPT', label: 'PERDE TUDO', color: 'bg-black' },
             ]
         };
@@ -177,6 +207,7 @@
             scoreboard: document.getElementById('scoreboard'),
             panel: document.getElementById('panel'),
             category: document.getElementById('category'),
+            hintDisplay: document.getElementById('hint-display'),
             actionButton: document.getElementById('action-button'),
             hintButton: document.getElementById('hint-button'),
             messageBox: document.getElementById('message-box'),
@@ -192,11 +223,63 @@
             cancelVowelButton: document.getElementById('cancel-vowel-button'),
             loadingOverlay: document.getElementById('loading-overlay'),
             loadingText: document.getElementById('loading-text'),
+            alertModal: {
+                modal: document.getElementById('alert-modal'),
+                title: document.getElementById('alert-title'),
+                message: document.getElementById('alert-message'),
+                okButton: document.getElementById('alert-ok-button'),
+            },
+            confirmModal: {
+                modal: document.getElementById('confirm-modal'),
+                title: document.getElementById('confirm-title'),
+                message: document.getElementById('confirm-message'),
+                okButton: document.getElementById('confirm-ok-button'),
+                cancelButton: document.getElementById('confirm-cancel-button'),
+            }
         };
 
         // --- ESTADO DO JOGO ---
         let gameState = {};
         let winnerHistory = [];
+        
+        // --- FUNÇÃO DE FORMATAÇÃO DE MOEDA ---
+        const formatCurrency = (value) => {
+            return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
+        };
+
+        // --- FUNÇÕES DE MODAL ---
+        const showAlert = (message, title = "Aviso") => {
+            ui.alertModal.title.textContent = title;
+            ui.alertModal.message.textContent = message;
+            ui.alertModal.modal.classList.remove('hidden');
+            ui.alertModal.modal.classList.add('flex');
+            return new Promise(resolve => {
+                ui.alertModal.okButton.onclick = () => {
+                    ui.alertModal.modal.classList.add('hidden');
+                    ui.alertModal.modal.classList.remove('flex');
+                    resolve();
+                };
+            });
+        };
+
+        const showConfirm = (message, title = "Confirmação") => {
+            ui.confirmModal.title.textContent = title;
+            ui.confirmModal.message.textContent = message;
+            ui.confirmModal.modal.classList.remove('hidden');
+            ui.confirmModal.modal.classList.add('flex');
+            return new Promise(resolve => {
+                ui.confirmModal.okButton.onclick = () => {
+                    ui.confirmModal.modal.classList.add('hidden');
+                    ui.confirmModal.modal.classList.remove('flex');
+                    resolve(true);
+                };
+                ui.confirmModal.cancelButton.onclick = () => {
+                    ui.confirmModal.modal.classList.add('hidden');
+                    ui.confirmModal.modal.classList.remove('flex');
+                    resolve(false);
+                };
+            });
+        };
 
         // --- FUNÇÕES DE PERSISTÊNCIA ---
         const saveGameState = () => localStorage.setItem('rodaRodaGameState', JSON.stringify(gameState));
@@ -204,8 +287,9 @@
         const saveWinnerHistory = () => localStorage.setItem('rodaRodaWinnerHistory', JSON.stringify(winnerHistory));
         const loadWinnerHistory = () => JSON.parse(localStorage.getItem('rodaRodaWinnerHistory')) || [];
 
-        const clearAllData = () => {
-            if (confirm('Tem certeza que deseja apagar todo o progresso e histórico?')) {
+        const clearAllData = async () => {
+            const confirmed = await showConfirm('Tem certeza que deseja apagar todo o progresso e histórico?');
+            if (confirmed) {
                 localStorage.removeItem('rodaRodaGameState');
                 localStorage.removeItem('rodaRodaWinnerHistory');
                 window.location.reload();
@@ -221,7 +305,7 @@
                 category: gameState.currentPhrase.category,
                 date: now.toLocaleString('pt-BR')
             };
-            winnerHistory.unshift(record); // Adiciona no início
+            winnerHistory.unshift(record);
             saveWinnerHistory();
         };
 
@@ -229,10 +313,24 @@
         const showPage = (pageId) => {
             ui.gameScreen.style.display = 'none';
             ui.historyScreen.style.display = 'none';
-            document.getElementById(pageId).style.display = 'flex'; // Usar flex para centralizar
+            document.getElementById(pageId).style.display = 'flex';
         };
 
         // --- FUNÇÕES DA API GEMINI ---
+        const fetchWithRetry = async (url, options, retries = 3, delay = 1000) => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    return response.json();
+                } catch (error) {
+                    console.error(`Attempt ${i + 1} failed:`, error);
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
+                }
+            }
+        };
+
         function setLoading(show, text = 'Carregando...') {
             ui.loadingText.textContent = text;
             ui.loadingOverlay.style.display = show ? 'flex' : 'none';
@@ -267,20 +365,18 @@
                 }
             };
             try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
-                const result = await response.json();
+                const result = await fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const jsonText = result.candidates[0].content.parts[0].text;
                 const data = JSON.parse(jsonText);
                 if (data.phrases && data.phrases.length > 0) {
                     gameConfig.phrases = data.phrases.map(p => ({ ...p, phrase: p.phrase.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") }));
-                    initGame(true); // Inicia um jogo novo com as frases geradas
+                    initGame(true);
                 } else {
                     throw new Error("A API não retornou frases válidas.");
                 }
             } catch (error) {
-                console.error("Erro ao gerar frases:", error);
-                alert("Não foi possível gerar as frases. Verifique o tema ou tente novamente.");
+                console.error("Erro final ao gerar frases:", error);
+                await showAlert("Não foi possível gerar as frases. Verifique o tema ou sua conexão e tente novamente.");
             } finally {
                 setLoading(false);
             }
@@ -293,24 +389,23 @@
                 return;
             }
             setLoading(true, "Gerando sua dica...");
-            player.score -= gameConfig.hintCost; // Debita antes para salvar o estado
+            player.score -= gameConfig.hintCost;
             updateScoreboard();
-            saveGameState();
             const apiKey = "";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
             const { phrase, category } = gameState.currentPhrase;
             const prompt = `Dê uma dica curta e inteligente para a frase "${phrase}" na categoria "${category}" de um jogo de Roda a Roda. Não use nenhuma palavra da frase na dica. A dica deve ser em português.`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
-                const result = await response.json();
+                const result = await fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const hint = result.candidates[0].content.parts[0].text;
-                showMessage(`Dica: ${hint}`, 8000);
+                gameState.currentHint = hint;
+                renderHint();
+                saveGameState();
             } catch (error) {
                 console.error("Erro ao gerar dica:", error);
                 showMessage("Não foi possível gerar a dica.", 2000);
-                player.score += gameConfig.hintCost; // Reembolsa se falhar
+                player.score += gameConfig.hintCost;
                 updateScoreboard();
                 saveGameState();
             } finally {
@@ -322,19 +417,20 @@
         function initGame(isNewGame = false) {
             if (isNewGame) {
                 gameState = {
-                    players: Array(gameConfig.players).fill(0).map((_, i) => ({ id: i + 1, score: 0 })),
+                    players: Array(gameConfig.players).fill(0).map((_, i) => ({ id: i + 1, score: 0.0 })),
                     currentPlayerIndex: 0,
                     currentPhrase: {},
                     revealedLetters: [],
                     gamePhase: 'START',
-                    currentWheelValue: 0,
-                    usedPhrases: gameState.usedPhrases || []
+                    currentWheelValue: 0.0,
+                    usedPhrases: gameState.usedPhrases || [],
+                    currentHint: ''
                 };
             }
             
             let availablePhrases = gameConfig.phrases.filter(p => !gameState.usedPhrases.includes(p.phrase));
             if (availablePhrases.length === 0 && gameConfig.phrases.length > 0) {
-                alert("Parabéns! Você jogou todas as frases do tema. Gere um novo jogo!");
+                showAlert("Parabéns! Você jogou todas as frases do tema. Gere um novo jogo!");
                 clearAllData();
                 return;
             }
@@ -344,6 +440,7 @@
             gameState.usedPhrases.push(gameState.currentPhrase.phrase);
             gameState.revealedLetters = [' '];
             gameState.gamePhase = 'SPINNING';
+            gameState.currentHint = ''; // Limpa a dica no novo round
             
             restoreUIFromState();
             saveGameState();
@@ -357,10 +454,15 @@
             }
             ui.themeScreen.style.display = 'none';
             ui.gameContainer.style.display = 'flex';
+            
+            ui.hintButton.textContent = `✨ Pedir Dica (${formatCurrency(gameConfig.hintCost)})`;
+            ui.buyVowelButton.textContent = `Comprar Vogal (${formatCurrency(gameConfig.vowelCost)})`;
+            
             updateScoreboard();
             renderPanel();
             renderWheel();
             renderKeyboard();
+            renderHint();
             updateUIForGamePhase();
             ui.hintButton.classList.remove('hidden');
         }
@@ -369,7 +471,7 @@
             if (!gameState.players) return;
             ui.scoreboard.innerHTML = gameState.players.map((player, index) => `
                 <div id="player-${player.id}" class="p-2 rounded-lg transition-all duration-300 ${index === gameState.currentPlayerIndex ? 'bg-cyan-400 text-slate-900 scale-110 shadow-lg' : 'bg-slate-700'}">
-                    <span class="font-bold">Jogador ${player.id}</span>: R$${player.score}
+                    <span class="font-bold">Jogador ${player.id}</span>: ${formatCurrency(player.score)}
                 </div>`).join('');
         }
 
@@ -390,7 +492,8 @@
             const segmentAngle = 360 / segments.length;
             ui.wheel.innerHTML = segments.map((seg, i) => {
                 const rotation = segmentAngle * i;
-                return `<div class="wheel-segment" style="transform: rotate(${rotation}deg) skewY(-60deg);"><div class="content ${seg.color} text-white">${seg.label}</div></div>`;
+                const label = typeof seg.value === 'number' ? formatCurrency(seg.value) : seg.label;
+                return `<div class="wheel-segment" style="transform: rotate(${rotation}deg) skewY(-60deg);"><div class="content ${seg.color} text-white">${label}</div></div>`;
             }).join('');
         }
 
@@ -409,6 +512,15 @@
                 const isRevealed = gameState.revealedLetters.includes(vowel);
                 return `<button class="vowel-letter text-2xl font-bold p-4 rounded-md transition-all duration-200 ${isRevealed ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-sky-700 hover:bg-sky-600 transform hover:scale-110'}" data-letter="${vowel}" ${isRevealed ? 'disabled' : ''}>${vowel}</button>`;
             }).join('');
+        }
+        
+        function renderHint() {
+            if (gameState.currentHint) {
+                ui.hintDisplay.innerHTML = `<span class="font-bold text-purple-300">Dica:</span> ${gameState.currentHint}`;
+                ui.hintDisplay.classList.remove('hidden');
+            } else {
+                ui.hintDisplay.classList.add('hidden');
+            }
         }
         
         function updateUIForGamePhase() {
@@ -447,7 +559,8 @@
                 const actualSegmentIndex = randomSegment % gameConfig.wheelSegments.length;
                 const result = gameConfig.wheelSegments[actualSegmentIndex];
                 gameState.currentWheelValue = result.value;
-                ui.wheelResult.textContent = result.label;
+                const label = typeof result.value === 'number' ? formatCurrency(result.value) : result.label;
+                ui.wheelResult.textContent = label;
                 setTimeout(() => processWheelResult(result), 1500);
             }, 4200);
         }
@@ -529,16 +642,27 @@
         
         function renderHistoryPage() {
             if (winnerHistory.length === 0) {
-                ui.historyList.innerHTML = `<p class="text-center text-slate-400">Nenhum vencedor ainda. Jogue um round para começar!</p>`;
+                ui.historyList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full text-slate-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mb-4"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.5a1.5 1.5 0 0 1-3 0V9a1.5 1.5 0 0 1 3 0v5.5Z"/><path d="M14 14.5a1.5 1.5 0 0 0 3 0V9a1.5 1.5 0 0 0-3 0v5.5Z"/><path d="M12 22V2"/><path d="m15 5-3-3-3 3"/></svg>
+                        <p class="text-lg">Nenhum vencedor ainda.</p>
+                        <p>Jogue um round para começar!</p>
+                    </div>
+                `;
             } else {
                 ui.historyList.innerHTML = winnerHistory.map(record => `
-                    <div class="bg-slate-700 p-4 rounded-lg">
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-lg font-bold text-cyan-300">Jogador ${record.winnerId} - R$${record.score}</h3>
-                            <span class="text-xs text-slate-400">${record.date}</span>
+                    <div class="bg-slate-700/50 p-4 rounded-lg border border-slate-600 flex items-start gap-4">
+                        <div class="text-yellow-400 pt-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.5a1.5 1.5 0 0 1-3 0V9a1.5 1.5 0 0 1 3 0v5.5Z"/><path d="M14 14.5a1.5 1.5 0 0 0 3 0V9a1.5 1.5 0 0 0-3 0v5.5Z"/><path d="M12 22V2"/><path d="m15 5-3-3-3 3"/></svg>
                         </div>
-                        <p class="text-slate-300">"${record.phrase}"</p>
-                        <p class="text-xs text-slate-400">Categoria: ${record.category}</p>
+                        <div>
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-lg font-bold text-cyan-300">Jogador ${record.winnerId} - ${formatCurrency(record.score)}</h3>
+                                <span class="text-xs text-slate-400">${record.date}</span>
+                            </div>
+                            <p class="text-slate-200 text-xl font-semibold">"${record.phrase}"</p>
+                            <p class="text-xs text-slate-400">Categoria: ${record.category}</p>
+                        </div>
                     </div>
                 `).join('');
             }
@@ -570,30 +694,29 @@
         ui.generateGameButton.addEventListener('click', () => {
             const theme = ui.themeInput.value.trim();
             if (theme) generateNewPhrases(theme);
-            else alert("Por favor, digite um tema para começar.");
+            else showAlert("Por favor, digite um tema para começar.");
         });
 
         ui.actionButton.addEventListener('click', () => {
-            switch(gameState.gamePhase) {
-                case 'END': initGame(true); break;
-                case 'SPINNING': spinWheel(); break;
-                case 'GUESSING':
-                    renderKeyboard();
-                    const player = gameState.players[gameState.currentPlayerIndex];
-                    const canAffordVowel = player.score >= gameConfig.vowelCost;
-                    ui.buyVowelButton.disabled = !canAffordVowel;
-                    ui.buyVowelButton.classList.toggle('opacity-50', !canAffordVowel);
-                    ui.buyVowelButton.classList.toggle('cursor-not-allowed', !canAffordVowel);
-                    ui.keyboardModal.classList.remove('hidden');
-                    break;
+            if (gameState.gamePhase === 'END') {
+                initGame(true);
+            } else if (gameState.gamePhase === 'SPINNING') {
+                spinWheel();
+            } else if (gameState.gamePhase === 'GUESSING') {
+                renderKeyboard();
+                const player = gameState.players[gameState.currentPlayerIndex];
+                const canAffordVowel = player.score >= gameConfig.vowelCost;
+                ui.buyVowelButton.disabled = !canAffordVowel;
+                ui.buyVowelButton.classList.toggle('opacity-50', !canAffordVowel);
+                ui.buyVowelButton.classList.toggle('cursor-not-allowed', !canAffordVowel);
+                ui.keyboardModal.classList.remove('hidden');
             }
         });
 
         ui.keyboard.addEventListener('click', (e) => {
             if (e.target.matches('.keyboard-letter')) {
                 const letter = e.target.dataset.letter;
-                const isVowel = 'AEIOU'.includes(letter);
-                if (isVowel) {
+                if ('AEIOU'.includes(letter)) {
                     showMessage('Vogais devem ser compradas!', 2000);
                     return;
                 }
@@ -630,7 +753,7 @@
         window.addEventListener('load', () => {
             winnerHistory = loadWinnerHistory();
             const savedState = loadGameState();
-            if (savedState && savedState.gamePhase !== 'END') {
+            if (savedState && savedState.gamePhase && savedState.gamePhase !== 'START') {
                 gameState = savedState;
                 restoreUIFromState();
             } else {
@@ -643,3 +766,4 @@
     </script>
 </body>
 </html>
+
