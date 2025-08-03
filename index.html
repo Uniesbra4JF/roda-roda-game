@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roda a Roda com Gemini AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            background-color: #1e293b; /* bg-slate-800 */
+        }
+        @keyframes reveal {
+            0% { transform: rotateY(90deg); opacity: 0; }
+            100% { transform: rotateY(0deg); opacity: 1; }
+        }
+        .letter-revealed { animation: reveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(3600deg); }
+        }
+        .spinning {
+            transition-timing-function: cubic-bezier(0.3, 1, 0.7, 1);
+            animation-name: spin;
+            animation-duration: 4s;
+            animation-fill-mode: forwards;
+        }
+        #wheel-pointer {
+            width: 0; height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #f87171; /* red-400 */
+            position: absolute; top: -15px; left: 50%;
+            transform: translateX(-50%); z-index: 10;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        }
+        .wheel-segment {
+            position: absolute; width: 50%; height: 50%;
+            transform-origin: 100% 100%;
+            overflow: hidden; border: 1px solid rgba(0,0,0,0.2);
+        }
+        .wheel-segment .content {
+            position: absolute; left: -100%; width: 200%; height: 200%;
+            text-align: center; transform: skewY(60deg) rotate(15deg);
+            padding-top: 10px; font-weight: bold; font-size: 0.8rem;
+            text-shadow: 1px 1px 1px rgba(0,0,0,0.2);
+        }
+        @keyframes spinner-anim {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spinner-anim 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-800 text-white flex flex-col items-center min-h-screen p-4">
+
+    <!-- MENU FIXO -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="menu-button" class="p-2 rounded-full bg-slate-700/50 hover:bg-slate-600/80 backdrop-blur-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </button>
+        <div id="dropdown-menu" class="absolute right-0 mt-2 w-48 bg-slate-700 rounded-md shadow-lg hidden">
+            <a href="#" id="history-link" class="block px-4 py-2 text-sm text-white hover:bg-slate-600">Histórico</a>
+            <a href="#" id="clear-data-link" class="block px-4 py-2 text-sm text-red-400 hover:bg-slate-600">Limpar Dados</a>
+        </div>
+    </div>
+
+    <!-- TELA DO JOGO -->
+    <div id="game-screen" class="w-full h-full flex flex-col items-center justify-center">
+        <!-- TELA DE GERAÇÃO DE TEMA -->
+        <div id="theme-generator-screen" class="w-full max-w-md mx-auto text-center">
+            <h1 class="text-4xl font-black tracking-wider uppercase">Roda a Roda</h1>
+            <h2 class="text-2xl text-cyan-300 font-bold mb-6">com Gemini AI</h2>
+            <div class="bg-slate-900/70 p-6 rounded-lg shadow-2xl">
+                <label for="theme-input" class="block mb-2 text-lg font-semibold">Digite um tema para o jogo:</label>
+                <input type="text" id="theme-input" class="w-full text-black p-3 rounded-lg mb-4 text-center text-lg" placeholder="Ex: Filmes de Ficção Científica...">
+                <button id="generate-game-button" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg w-full text-xl uppercase transition-transform transform hover:scale-105">
+                    ✨ Gerar Jogo
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTAINER PRINCIPAL DO JOGO (inicialmente oculto) -->
+        <div id="game-container" class="w-full max-w-md mx-auto flex-col h-full hidden">
+            <header class="text-center mb-4">
+                <h1 class="text-3xl font-black tracking-wider uppercase">Roda a Roda</h1>
+                <div id="scoreboard" class="flex justify-center gap-2 mt-2"></div>
+            </header>
+            <main class="bg-slate-900/50 p-4 rounded-lg shadow-2xl flex-grow flex flex-col justify-center items-center mb-4 border border-slate-700">
+                <div id="panel" class="flex flex-wrap justify-center gap-1.5"></div>
+                <p id="category" class="mt-4 text-lg font-bold text-cyan-300 tracking-widest uppercase"></p>
+            </main>
+            <footer class="flex flex-col items-center gap-3">
+                <div id="message-box" class="text-center text-xl font-bold h-12 mb-2 text-yellow-300"></div>
+                <button id="action-button" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold py-4 px-8 rounded-lg shadow-lg w-full text-xl uppercase transition-transform transform hover:scale-105"></button>
+                <button id="hint-button" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-2 px-6 rounded-lg shadow-lg w-full text-lg uppercase transition-transform transform hover:scale-105 hidden">✨ Pedir Dica (R$300)</button>
+            </footer>
+        </div>
+    </div>
+
+    <!-- TELA DE HISTÓRICO -->
+    <div id="history-screen" class="w-full max-w-2xl mx-auto hidden">
+        <h1 class="text-3xl font-black tracking-wider uppercase text-center mb-6">Histórico de Vencedores</h1>
+        <div id="history-list" class="space-y-4">
+            <!-- Histórico será preenchido pelo JS -->
+        </div>
+        <button id="back-to-game-button" class="mt-8 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg w-full text-lg uppercase">Voltar ao Jogo</button>
+    </div>
+
+    <!-- MODAIS -->
+    <div id="wheel-modal" class="fixed inset-0 bg-black bg-opacity-70 flex-col justify-center items-center hidden z-50 p-4">
+        <div class="relative w-72 h-72 md:w-96 md:h-96 mb-8">
+            <div id="wheel-pointer"></div>
+            <div id="wheel" class="relative w-full h-full rounded-full shadow-2xl"></div>
+        </div>
+        <p id="wheel-result" class="text-2xl md:text-4xl font-black text-center h-12"></p>
+    </div>
+    <div id="keyboard-modal" class="fixed bottom-0 left-0 right-0 bg-slate-800/95 p-4 rounded-t-2xl shadow-2xl hidden z-40 backdrop-blur-sm">
+        <div id="keyboard" class="grid grid-cols-7 sm:grid-cols-10 gap-1.5 text-center"></div>
+        <div class="flex gap-2 mt-4">
+            <button id="buy-vowel-button" class="flex-1 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 text-white font-bold py-3 rounded-lg transition-opacity">Comprar Vogal (R$250)</button>
+            <button id="close-keyboard-button" class="flex-1 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold py-3 px-5 rounded-lg">Fechar</button>
+        </div>
+    </div>
+    <div id="vowel-modal" class="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center hidden z-50 p-4">
+        <div class="bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-sm text-white border border-slate-600">
+            <h3 class="text-xl font-bold mb-4 text-center text-cyan-300">Comprar Vogal</h3>
+            <div id="vowel-keyboard" class="grid grid-cols-5 gap-2 text-center mb-4"></div>
+            <button id="cancel-vowel-button" class="w-full bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold py-2 px-4 rounded">Cancelar</button>
+        </div>
+    </div>
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex-col justify-center items-center hidden z-50">
+        <div class="spinner"></div>
+        <p id="loading-text" class="text-xl mt-4">Gerando seu jogo...</p>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÕES DO JOGO ---
+        const gameConfig = {
+            players: 3,
+            vowelCost: 250,
+            hintCost: 300,
+            phrases: [],
+            wheelSegments: [
+                { value: 500, label: 'R$500', color: 'bg-teal-500' }, { value: 600, label: 'R$600', color: 'bg-cyan-500' },
+                { value: 700, label: 'R$700', color: 'bg-sky-500' }, { value: 800, label: 'R$800', color: 'bg-indigo-500' },
+                { value: 900, label: 'R$900', color: 'bg-purple-500' }, { value: 1000, label: 'R$1000', color: 'bg-pink-500' },
+                { value: 'PASS', label: 'PASSA A VEZ', color: 'bg-slate-500' }, { value: 'BANKRUPT', label: 'PERDE TUDO', color: 'bg-black' },
+            ]
+        };
+
+        // --- ELEMENTOS DA UI ---
+        const ui = {
+            menuButton: document.getElementById('menu-button'),
+            dropdownMenu: document.getElementById('dropdown-menu'),
+            historyLink: document.getElementById('history-link'),
+            clearDataLink: document.getElementById('clear-data-link'),
+            gameScreen: document.getElementById('game-screen'),
+            historyScreen: document.getElementById('history-screen'),
+            historyList: document.getElementById('history-list'),
+            backToGameButton: document.getElementById('back-to-game-button'),
+            themeScreen: document.getElementById('theme-generator-screen'),
+            gameContainer: document.getElementById('game-container'),
+            themeInput: document.getElementById('theme-input'),
+            generateGameButton: document.getElementById('generate-game-button'),
+            scoreboard: document.getElementById('scoreboard'),
+            panel: document.getElementById('panel'),
+            category: document.getElementById('category'),
+            actionButton: document.getElementById('action-button'),
+            hintButton: document.getElementById('hint-button'),
+            messageBox: document.getElementById('message-box'),
+            wheelModal: document.getElementById('wheel-modal'),
+            wheel: document.getElementById('wheel'),
+            wheelResult: document.getElementById('wheel-result'),
+            keyboardModal: document.getElementById('keyboard-modal'),
+            keyboard: document.getElementById('keyboard'),
+            buyVowelButton: document.getElementById('buy-vowel-button'),
+            closeKeyboardButton: document.getElementById('close-keyboard-button'),
+            vowelModal: document.getElementById('vowel-modal'),
+            vowelKeyboard: document.getElementById('vowel-keyboard'),
+            cancelVowelButton: document.getElementById('cancel-vowel-button'),
+            loadingOverlay: document.getElementById('loading-overlay'),
+            loadingText: document.getElementById('loading-text'),
+        };
+
+        // --- ESTADO DO JOGO ---
+        let gameState = {};
+        let winnerHistory = [];
+
+        // --- FUNÇÕES DE PERSISTÊNCIA ---
+        const saveGameState = () => localStorage.setItem('rodaRodaGameState', JSON.stringify(gameState));
+        const loadGameState = () => JSON.parse(localStorage.getItem('rodaRodaGameState'));
+        const saveWinnerHistory = () => localStorage.setItem('rodaRodaWinnerHistory', JSON.stringify(winnerHistory));
+        const loadWinnerHistory = () => JSON.parse(localStorage.getItem('rodaRodaWinnerHistory')) || [];
+
+        const clearAllData = () => {
+            if (confirm('Tem certeza que deseja apagar todo o progresso e histórico?')) {
+                localStorage.removeItem('rodaRodaGameState');
+                localStorage.removeItem('rodaRodaWinnerHistory');
+                window.location.reload();
+            }
+        };
+        
+        const addToHistory = (winner) => {
+            const now = new Date();
+            const record = {
+                winnerId: winner.id,
+                score: winner.score,
+                phrase: gameState.currentPhrase.phrase,
+                category: gameState.currentPhrase.category,
+                date: now.toLocaleString('pt-BR')
+            };
+            winnerHistory.unshift(record); // Adiciona no início
+            saveWinnerHistory();
+        };
+
+        // --- FUNÇÕES DE NAVEGAÇÃO ---
+        const showPage = (pageId) => {
+            ui.gameScreen.style.display = 'none';
+            ui.historyScreen.style.display = 'none';
+            document.getElementById(pageId).style.display = 'flex'; // Usar flex para centralizar
+        };
+
+        // --- FUNÇÕES DA API GEMINI ---
+        function setLoading(show, text = 'Carregando...') {
+            ui.loadingText.textContent = text;
+            ui.loadingOverlay.style.display = show ? 'flex' : 'none';
+        }
+
+        async function generateNewPhrases(theme) {
+            setLoading(true, `Gerando frases sobre "${theme}"...`);
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const prompt = `Gere uma lista de 7 frases para um jogo de "Roda a Roda" sobre o tema "${theme}". As frases devem estar em maiúsculas, sem acentos ou caracteres especiais (exceto espaços), e ter no máximo 30 caracteres no total. Forneça também uma categoria para cada frase. Retorne o resultado como um JSON.`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            phrases: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        category: { type: "STRING" },
+                                        phrase: { type: "STRING" }
+                                    },
+                                    required: ["category", "phrase"]
+                                }
+                            }
+                        },
+                        required: ["phrases"]
+                    }
+                }
+            };
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
+                const result = await response.json();
+                const jsonText = result.candidates[0].content.parts[0].text;
+                const data = JSON.parse(jsonText);
+                if (data.phrases && data.phrases.length > 0) {
+                    gameConfig.phrases = data.phrases.map(p => ({ ...p, phrase: p.phrase.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") }));
+                    initGame(true); // Inicia um jogo novo com as frases geradas
+                } else {
+                    throw new Error("A API não retornou frases válidas.");
+                }
+            } catch (error) {
+                console.error("Erro ao gerar frases:", error);
+                alert("Não foi possível gerar as frases. Verifique o tema ou tente novamente.");
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function getHint() {
+            const player = gameState.players[gameState.currentPlayerIndex];
+            if (player.score < gameConfig.hintCost) {
+                showMessage(`Saldo insuficiente para dica!`, 2000);
+                return;
+            }
+            setLoading(true, "Gerando sua dica...");
+            player.score -= gameConfig.hintCost; // Debita antes para salvar o estado
+            updateScoreboard();
+            saveGameState();
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const { phrase, category } = gameState.currentPhrase;
+            const prompt = `Dê uma dica curta e inteligente para a frase "${phrase}" na categoria "${category}" de um jogo de Roda a Roda. Não use nenhuma palavra da frase na dica. A dica deve ser em português.`;
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
+                const result = await response.json();
+                const hint = result.candidates[0].content.parts[0].text;
+                showMessage(`Dica: ${hint}`, 8000);
+            } catch (error) {
+                console.error("Erro ao gerar dica:", error);
+                showMessage("Não foi possível gerar a dica.", 2000);
+                player.score += gameConfig.hintCost; // Reembolsa se falhar
+                updateScoreboard();
+                saveGameState();
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // --- FUNÇÕES DO JOGO ---
+        function initGame(isNewGame = false) {
+            if (isNewGame) {
+                gameState = {
+                    players: Array(gameConfig.players).fill(0).map((_, i) => ({ id: i + 1, score: 0 })),
+                    currentPlayerIndex: 0,
+                    currentPhrase: {},
+                    revealedLetters: [],
+                    gamePhase: 'START',
+                    currentWheelValue: 0,
+                    usedPhrases: gameState.usedPhrases || []
+                };
+            }
+            
+            let availablePhrases = gameConfig.phrases.filter(p => !gameState.usedPhrases.includes(p.phrase));
+            if (availablePhrases.length === 0 && gameConfig.phrases.length > 0) {
+                alert("Parabéns! Você jogou todas as frases do tema. Gere um novo jogo!");
+                clearAllData();
+                return;
+            }
+            
+            const phraseIndex = Math.floor(Math.random() * availablePhrases.length);
+            gameState.currentPhrase = availablePhrases[phraseIndex];
+            gameState.usedPhrases.push(gameState.currentPhrase.phrase);
+            gameState.revealedLetters = [' '];
+            gameState.gamePhase = 'SPINNING';
+            
+            restoreUIFromState();
+            saveGameState();
+        }
+        
+        function restoreUIFromState() {
+            if (!gameState || !gameState.gamePhase || gameState.gamePhase === 'START') {
+                 ui.themeScreen.style.display = 'block';
+                 ui.gameContainer.style.display = 'none';
+                 return;
+            }
+            ui.themeScreen.style.display = 'none';
+            ui.gameContainer.style.display = 'flex';
+            updateScoreboard();
+            renderPanel();
+            renderWheel();
+            renderKeyboard();
+            updateUIForGamePhase();
+            ui.hintButton.classList.remove('hidden');
+        }
+
+        function updateScoreboard() {
+            if (!gameState.players) return;
+            ui.scoreboard.innerHTML = gameState.players.map((player, index) => `
+                <div id="player-${player.id}" class="p-2 rounded-lg transition-all duration-300 ${index === gameState.currentPlayerIndex ? 'bg-cyan-400 text-slate-900 scale-110 shadow-lg' : 'bg-slate-700'}">
+                    <span class="font-bold">Jogador ${player.id}</span>: R$${player.score}
+                </div>`).join('');
+        }
+
+        function renderPanel() {
+            if (!gameState.currentPhrase || !gameState.currentPhrase.phrase) return;
+            const phrase = gameState.currentPhrase.phrase;
+            ui.panel.innerHTML = phrase.split('').map(char => {
+                if (char === ' ') return '<div class="w-4 h-8 sm:w-8 sm:h-10 bg-transparent"></div>';
+                const isRevealed = gameState.revealedLetters.includes(char);
+                return `<div class="flex justify-center items-center w-6 h-8 sm:w-8 sm:h-10 rounded-md shadow-inner ${isRevealed ? 'bg-slate-100 text-slate-900' : 'bg-slate-800'}">
+                    ${isRevealed ? `<span class="text-2xl font-bold letter-revealed">${char}</span>` : ''}</div>`;
+            }).join('');
+            ui.category.textContent = `Categoria: ${gameState.currentPhrase.category}`;
+        }
+        
+        function renderWheel() {
+            const segments = gameConfig.wheelSegments.concat(gameConfig.wheelSegments);
+            const segmentAngle = 360 / segments.length;
+            ui.wheel.innerHTML = segments.map((seg, i) => {
+                const rotation = segmentAngle * i;
+                return `<div class="wheel-segment" style="transform: rotate(${rotation}deg) skewY(-60deg);"><div class="content ${seg.color} text-white">${seg.label}</div></div>`;
+            }).join('');
+        }
+
+        function renderKeyboard() {
+            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            ui.keyboard.innerHTML = alphabet.split('').map(letter => {
+                const isVowel = 'AEIOU'.includes(letter);
+                const isRevealed = gameState.revealedLetters.includes(letter);
+                return `<button class="keyboard-letter text-lg font-bold p-2 rounded-md transition-all duration-200 ${isRevealed ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : (isVowel ? 'bg-sky-700 hover:bg-sky-600' : 'bg-slate-300 text-slate-800 hover:bg-slate-100 transform hover:scale-110')}" data-letter="${letter}" ${isRevealed ? 'disabled' : ''}>${letter}</button>`;
+            }).join('');
+        }
+        
+        function renderVowelKeyboard() {
+            const vowels = 'AEIOU';
+            ui.vowelKeyboard.innerHTML = vowels.split('').map(vowel => {
+                const isRevealed = gameState.revealedLetters.includes(vowel);
+                return `<button class="vowel-letter text-2xl font-bold p-4 rounded-md transition-all duration-200 ${isRevealed ? 'bg-slate-600 text-slate-400 cursor-not-allowed' : 'bg-sky-700 hover:bg-sky-600 transform hover:scale-110'}" data-letter="${vowel}" ${isRevealed ? 'disabled' : ''}>${vowel}</button>`;
+            }).join('');
+        }
+        
+        function updateUIForGamePhase() {
+            ui.actionButton.disabled = false;
+            ui.keyboardModal.classList.add('hidden');
+            ui.wheelModal.classList.add('hidden');
+            ui.messageBox.textContent = '';
+            
+            const player = gameState.players[gameState.currentPlayerIndex];
+            const canAffordHint = player && player.score >= gameConfig.hintCost;
+            ui.hintButton.disabled = !canAffordHint;
+            ui.hintButton.classList.toggle('opacity-50', !canAffordHint);
+
+            switch(gameState.gamePhase) {
+                case 'SPINNING': ui.actionButton.textContent = 'Girar a Roda'; break;
+                case 'GUESSING': ui.actionButton.textContent = 'Escolher Letra'; break;
+                case 'END': ui.actionButton.textContent = 'Próximo Round'; break;
+            }
+        }
+
+        function spinWheel() {
+            gameState.gamePhase = 'PROCESSING';
+            ui.wheelResult.textContent = '';
+            ui.wheelModal.classList.remove('hidden');
+            const wheelElement = document.getElementById('wheel');
+            wheelElement.classList.remove('spinning');
+            void wheelElement.offsetWidth;
+            const totalSegments = gameConfig.wheelSegments.length * 2;
+            const segmentAngle = 360 / totalSegments;
+            const randomSegment = Math.floor(Math.random() * totalSegments);
+            const finalRotation = 3600 + (randomSegment * segmentAngle);
+            const finalAngle = finalRotation - (segmentAngle / 2);
+            wheelElement.style.transform = `rotate(${finalAngle}deg)`;
+            wheelElement.classList.add('spinning');
+            setTimeout(() => {
+                const actualSegmentIndex = randomSegment % gameConfig.wheelSegments.length;
+                const result = gameConfig.wheelSegments[actualSegmentIndex];
+                gameState.currentWheelValue = result.value;
+                ui.wheelResult.textContent = result.label;
+                setTimeout(() => processWheelResult(result), 1500);
+            }, 4200);
+        }
+
+        function processWheelResult(result) {
+            ui.wheelModal.classList.add('hidden');
+            if (result.value === 'PASS') {
+                showMessage(`Passou a vez!`, 2000);
+                nextPlayer();
+            } else if (result.value === 'BANKRUPT') {
+                showMessage(`Perdeu tudo!`, 2000);
+                gameState.players[gameState.currentPlayerIndex].score = 0;
+                nextPlayer();
+            } else {
+                gameState.gamePhase = 'GUESSING';
+                updateUIForGamePhase();
+                saveGameState();
+            }
+        }
+
+        function handleGuess(letter, isVowel = false) {
+            if (gameState.revealedLetters.includes(letter)) return;
+            const player = gameState.players[gameState.currentPlayerIndex];
+            if (isVowel) {
+                if (player.score < gameConfig.vowelCost) {
+                    showMessage(`Saldo insuficiente!`, 2000);
+                    return;
+                }
+                player.score -= gameConfig.vowelCost;
+            }
+            gameState.revealedLetters.push(letter);
+            renderKeyboard();
+            const phrase = gameState.currentPhrase.phrase;
+            const count = phrase.split(letter).length - 1;
+            if (count > 0) {
+                showMessage(`Acertou ${count} letra(s)!`, 2000);
+                if (!isVowel) player.score += gameState.currentWheelValue * count;
+                renderPanel();
+                updateScoreboard();
+                checkWinCondition();
+            } else {
+                showMessage(`Letra errada!`, 2000);
+                nextPlayer();
+            }
+            ui.keyboardModal.classList.add('hidden');
+            ui.vowelModal.classList.add('hidden');
+            saveGameState();
+        }
+        
+        function checkWinCondition() {
+            const phraseLetters = [...new Set(gameState.currentPhrase.phrase.replace(/ /g, ''))];
+            const revealedPhraseLetters = gameState.revealedLetters.filter(l => l !== ' ');
+            if (phraseLetters.every(l => revealedPhraseLetters.includes(l))) {
+                setTimeout(() => {
+                    const winner = gameState.players[gameState.currentPlayerIndex];
+                    showMessage(`Parabéns, Jogador ${winner.id}! Você venceu!`, 5000);
+                    gameState.gamePhase = 'END';
+                    addToHistory(winner);
+                    updateUIForGamePhase();
+                    saveGameState();
+                }, 500);
+            }
+        }
+
+        function nextPlayer() {
+            gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % gameConfig.players;
+            gameState.gamePhase = 'SPINNING';
+            updateScoreboard();
+            updateUIForGamePhase();
+            saveGameState();
+        }
+
+        function showMessage(text, duration) {
+            ui.messageBox.textContent = text;
+            if (duration) {
+                setTimeout(() => { if (ui.messageBox.textContent === text) ui.messageBox.textContent = ''; }, duration);
+            }
+        }
+        
+        function renderHistoryPage() {
+            if (winnerHistory.length === 0) {
+                ui.historyList.innerHTML = `<p class="text-center text-slate-400">Nenhum vencedor ainda. Jogue um round para começar!</p>`;
+            } else {
+                ui.historyList.innerHTML = winnerHistory.map(record => `
+                    <div class="bg-slate-700 p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <h3 class="text-lg font-bold text-cyan-300">Jogador ${record.winnerId} - R$${record.score}</h3>
+                            <span class="text-xs text-slate-400">${record.date}</span>
+                        </div>
+                        <p class="text-slate-300">"${record.phrase}"</p>
+                        <p class="text-xs text-slate-400">Categoria: ${record.category}</p>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        ui.menuButton.addEventListener('click', () => ui.dropdownMenu.classList.toggle('hidden'));
+        document.addEventListener('click', (e) => {
+            if (!ui.menuButton.contains(e.target) && !ui.dropdownMenu.contains(e.target)) {
+                ui.dropdownMenu.classList.add('hidden');
+            }
+        });
+        
+        ui.historyLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderHistoryPage();
+            showPage('history-screen');
+            ui.dropdownMenu.classList.add('hidden');
+        });
+        
+        ui.clearDataLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            clearAllData();
+            ui.dropdownMenu.classList.add('hidden');
+        });
+        
+        ui.backToGameButton.addEventListener('click', () => showPage('game-screen'));
+
+        ui.generateGameButton.addEventListener('click', () => {
+            const theme = ui.themeInput.value.trim();
+            if (theme) generateNewPhrases(theme);
+            else alert("Por favor, digite um tema para começar.");
+        });
+
+        ui.actionButton.addEventListener('click', () => {
+            switch(gameState.gamePhase) {
+                case 'END': initGame(true); break;
+                case 'SPINNING': spinWheel(); break;
+                case 'GUESSING':
+                    renderKeyboard();
+                    const player = gameState.players[gameState.currentPlayerIndex];
+                    const canAffordVowel = player.score >= gameConfig.vowelCost;
+                    ui.buyVowelButton.disabled = !canAffordVowel;
+                    ui.buyVowelButton.classList.toggle('opacity-50', !canAffordVowel);
+                    ui.buyVowelButton.classList.toggle('cursor-not-allowed', !canAffordVowel);
+                    ui.keyboardModal.classList.remove('hidden');
+                    break;
+            }
+        });
+
+        ui.keyboard.addEventListener('click', (e) => {
+            if (e.target.matches('.keyboard-letter')) {
+                const letter = e.target.dataset.letter;
+                const isVowel = 'AEIOU'.includes(letter);
+                if (isVowel) {
+                    showMessage('Vogais devem ser compradas!', 2000);
+                    return;
+                }
+                handleGuess(letter);
+            }
+        });
+
+        ui.buyVowelButton.addEventListener('click', () => {
+            if (ui.buyVowelButton.disabled) {
+                showMessage(`Saldo insuficiente!`, 2000);
+                return;
+            }
+            ui.keyboardModal.classList.add('hidden');
+            renderVowelKeyboard();
+            ui.vowelModal.classList.remove('hidden');
+        });
+        
+        ui.vowelKeyboard.addEventListener('click', (e) => {
+            if (e.target.matches('.vowel-letter')) {
+                const letter = e.target.dataset.letter;
+                handleGuess(letter, true);
+            }
+        });
+        
+        ui.cancelVowelButton.addEventListener('click', () => {
+            ui.vowelModal.classList.add('hidden');
+            ui.keyboardModal.classList.remove('hidden');
+        });
+
+        ui.closeKeyboardButton.addEventListener('click', () => ui.keyboardModal.classList.add('hidden'));
+        ui.hintButton.addEventListener('click', getHint);
+        
+        // --- INICIALIZAÇÃO DO JOGO ---
+        window.addEventListener('load', () => {
+            winnerHistory = loadWinnerHistory();
+            const savedState = loadGameState();
+            if (savedState && savedState.gamePhase !== 'END') {
+                gameState = savedState;
+                restoreUIFromState();
+            } else {
+                showPage('game-screen');
+                ui.gameContainer.style.display = 'none';
+                ui.themeScreen.style.display = 'block';
+            }
+        });
+
+    </script>
+</body>
+</html>
